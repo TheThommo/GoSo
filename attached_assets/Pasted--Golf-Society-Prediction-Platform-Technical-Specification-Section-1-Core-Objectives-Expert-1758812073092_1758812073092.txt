@@ -1,0 +1,209 @@
+# Golf Society Prediction Platform - Technical Specification
+
+## Section 1: Core Objectives & Expert Recommendations
+
+### Primary Goal
+Build a comprehensive golf society prediction platform that enables real-world tournament management with betting-style predictions using a fictitious token system. The platform must be mobile-first, vibrant, and scalable for multiple concurrent tournaments.
+
+### Technical Stack Recommendation
+
+**Frontend: Next.js 14 with TypeScript**
+- Reasoning: Built-in SSR/SSG for SEO and performance, excellent mobile responsiveness, TypeScript for type safety
+- UI Framework: Tailwind CSS + shadcn/ui components for rapid development and consistent mobile-first design
+- State Management: Zustand (lightweight, perfect for Replit's constraints)
+
+**Backend: Next.js API Routes + tRPC**
+- Reasoning: Unified codebase reduces complexity in Replit, tRPC provides end-to-end type safety
+- Authentication: NextAuth.js with email/magic link providers
+- Real-time: Socket.io for live updates and admin broadcasts
+
+**Database: PostgreSQL via Neon**
+- Reasoning: Excellent Replit integration, full ACID compliance, supports complex queries for analytics
+- ORM: Prisma for type-safe database operations and seamless schema management
+
+**Deployment: Replit + Vercel Integration**
+- Static assets via Vercel's CDN for optimal mobile performance
+- Environment variables managed through Replit Secrets
+
+### Data Model Design
+
+```sql
+-- Core Users & Roles
+Users (id, email, name, created_at, subscription_status, token_balance)
+UserRoles (user_id, role, game_id?, created_at) -- master_admin, game_admin, player, spectator
+
+-- Game Management
+Games (id, name, course_name, location, tees, start_date, days_count, total_golfers, interval_minutes, is_locked, created_by, created_at)
+TeeTimeSlots (id, game_id, slot_time, position_order)
+
+-- Player Registry (Persistent across games)
+PlayerRegistry (id, first_name, last_name, nickname, gender, base_handicap, email?, created_at)
+GamePlayers (id, game_id, player_id, adjusted_handicap, tee_slot_id, tee_position)
+
+-- Prediction System
+PredictionScopes (id, game_id, scope_type, entity_ids[], odds, is_active) -- individual/pair/group
+PlayerPredictions (id, user_id, game_id, first_place_scope_id, second_place_scope_id, third_place_scope_id)
+TokenBets (id, user_id, game_id, scope_id, token_amount, potential_payout)
+
+-- Results & Payouts
+GameResults (id, game_id, final_rankings_json, payout_multipliers_json, finalized_at)
+UserTransactions (id, user_id, game_id, transaction_type, amount, description, created_at)
+
+-- Indexes for Performance
+CREATE INDEX idx_games_start_date ON Games(start_date);
+CREATE INDEX idx_user_roles_game ON UserRoles(game_id, role);
+CREATE INDEX idx_predictions_user_game ON PlayerPredictions(user_id, game_id);
+```
+
+## Section 2: Master Admin Functionality
+
+### Platform-Wide Dashboard Metrics
+- **Game Analytics**: Total active games, completed tournaments, average players per game
+- **User Engagement**: Daily/weekly active users, prediction participation rates, token circulation
+- **Performance Metrics**: Most predicted players across all games, highest token volume games
+- **Revenue Tracking**: Subscription conversion rates, freemium usage patterns
+- **Geographic Distribution**: Game locations heatmap, regional engagement trends
+
+### System-Level Controls
+- **User Role Management**: Promote/demote Master Admins, suspend accounts, manage subscriptions
+- **Platform Settings**: Global token distribution rates, default game parameters, maintenance mode
+- **Content Moderation**: Review and moderate game names, player communications
+- **Analytics Export**: CSV/JSON exports for business intelligence and reporting
+
+## Section 3: Game Admin Console
+
+### Game Creation Workflow
+**Step 1: Tournament Setup**
+```typescript
+interface GameConfig {
+  name: string;
+  course: { name: string; location: string; tees: string };
+  schedule: { startDate: Date; daysCount: number };
+  capacity: { totalGolfers: number; teeInterval: number };
+}
+```
+
+**Step 2: Player Management Interface**
+- **Import/Export**: CSV upload for bulk player addition, persistent player database lookup
+- **Real-time Handicap Adjustment**: Slider interface with audit trail
+- **Drag-and-Drop Tee Times**: Visual tee sheet with 4-player group assignment
+- **Player Validation**: Email verification, duplicate detection, handicap range checks
+
+**Step 3: Odds Configuration**
+- **Dynamic Odds Calculator**: Suggested odds based on handicaps with manual override
+- **Bulk Operations**: Apply multipliers, copy from previous games
+- **Preview Mode**: Show potential payouts before publishing
+- **Lock Mechanism**: Manual lock button + automatic time-based lock with 15-minute warning
+
+### Communication System
+- **Live Updates Panel**: Real-time score entry with broadcast options
+- **Message Templates**: Pre-configured updates (hole-by-hole, weather alerts, results)
+- **Push Notifications**: SMS/email integration for critical updates
+- **Spectator Feed**: Dedicated view for non-players with commentary
+
+## Section 4: Player & Spectator Experience
+
+### Mobile-First Interface Design
+- **Progressive Web App**: Install prompt, offline capability for viewing predictions
+- **Touch-Optimized**: Large buttons, swipe gestures, haptic feedback
+- **Dark/Light Mode**: Automatic switching based on device preferences
+- **Accessibility**: Screen reader support, high contrast options
+
+### Authentication & Access Control
+- **Magic Link Login**: Passwordless authentication via email
+- **Session Management**: JWT tokens with automatic refresh
+- **Role-Based Views**: Dynamic UI based on user permissions
+- **Spectator Codes**: 6-digit alphanumeric codes with expiration
+
+### Prediction Interface
+```typescript
+interface PredictionSubmission {
+  gameId: string;
+  predictions: {
+    first: ScopeId;
+    second: ScopeId;
+    third: ScopeId;
+  };
+  tokenBets: Array<{
+    scopeId: ScopeId;
+    amount: number;
+  }>;
+  totalTokensUsed: number;
+}
+```
+
+### Token Management System
+- **Starting Balance**: 1000 tokens per game (free users), 2000 (premium)
+- **Token Distribution**: Visual pie charts showing allocation
+- **Potential Winnings Calculator**: Real-time payout preview
+- **Transaction History**: Detailed log with win/loss tracking
+- **Leaderboard**: Token rankings across games
+
+## Section 5: Expert Enhancements & Logical Frameworks
+
+### Recommended Advanced Features
+
+**1. Dynamic Live Scoring Integration**
+- **Third-party APIs**: Integration with golf scoring platforms (GolfGenius, Tournament Software)
+- **Manual Score Entry**: Mobile-optimized scorecard interface for admins
+- **Real-time Leaderboard**: Live position changes with animated transitions
+- **Momentum Indicators**: Hot/cold player streaks, comeback potential metrics
+
+**2. Intelligent Odds Engine**
+- **Machine Learning Model**: Historical performance analysis for odds suggestions
+- **Market Movement**: Real-time odds adjustments based on betting patterns
+- **Weather Integration**: Course condition adjustments via weather APIs
+- **Handicap Analytics**: Performance trend analysis for more accurate handicapping
+
+**3. Social Features & Gamification**
+- **Achievement System**: Badges for prediction accuracy, consecutive games, big wins
+- **Social Sharing**: Shareable prediction cards, leaderboard screenshots
+- **Friend Challenges**: Private prediction competitions within games
+- **Streak Bonuses**: Extra tokens for consecutive accurate predictions
+
+### Scalability & Security Plan
+
+**Performance Optimization**
+- **Database Sharding**: Partition games by date/region for large-scale deployment
+- **Caching Strategy**: Redis integration for frequently accessed data (leaderboards, odds)
+- **CDN Implementation**: Static asset optimization for global mobile performance
+- **Lazy Loading**: Progressive data loading for mobile bandwidth optimization
+
+**Security Framework**
+- **Data Encryption**: AES-256 for sensitive data, TLS 1.3 for all communications
+- **Rate Limiting**: API throttling to prevent abuse, bot protection
+- **Input Validation**: Comprehensive sanitization and validation at all endpoints
+- **Audit Logging**: Complete user action tracking for compliance and debugging
+- **GDPR Compliance**: Data export/deletion tools, consent management
+
+### Future Development Roadmap
+
+**Phase 2: Enhanced Analytics (Q1 2026)**
+- Advanced player performance analytics
+- Predictive modeling for future tournament outcomes
+- Custom reporting dashboard for tournament organizers
+
+**Phase 3: Multi-Sport Expansion (Q2 2026)**
+- Tennis tournament support
+- Corporate event management
+- Integration with major tournament management software
+
+**Phase 4: Monetization Features (Q3 2026)**
+- Sponsored content integration
+- White-label solutions for golf clubs
+- Premium analytics packages for serious tournament organizers
+
+**Phase 5: Mobile App (Q4 2026)**
+- Native iOS/Android applications
+- Offline mode capabilities
+- Push notification system integration
+
+### Monetization Strategy
+
+**Freemium Model Implementation**
+- **Free Tier**: Full access until November 30, 2025, then limited to 2 games/month
+- **Premium Subscription**: $5/month or $50/year for unlimited access
+- **Advertisement Placements**: Sponsor banners, course recommendations, equipment partnerships
+- **Revenue Sharing**: Percentage of tournament entry fees for major events
+
+This specification provides a comprehensive foundation for building a professional-grade golf society prediction platform that balances user experience, technical excellence, and business viability while being optimized for the Replit development environment.
